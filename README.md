@@ -24,12 +24,10 @@ Gos is a talking dog that runs on a Fly Sprite. When the Sprite sleeps, the next
 ```bash
 cp .env.example .env
 npm install
-npm test
-npm run build
 npm start
 ```
 
-`.env.example` sets `MOCK_LLM=1`, so the chat answers without keys. Open http://localhost:8080. The owner token in the example is `change-me-local-only`. Type it under Owner and press Enter.
+`npm start` compiles `src/` into `dist/` when that build is missing or older than the source, then serves http://localhost:8080. `.env.example` sets `MOCK_LLM=1`, so the chat answers without keys. The owner token in the example is `change-me-local-only`. Type it under Owner and press Enter.
 
 `npm run dev` runs the TypeScript directly.
 
