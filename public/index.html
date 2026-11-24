@@ -2,91 +2,67 @@
 <html lang="en">
   <head>
     <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
     <title>Gos</title>
     <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
     <link rel="stylesheet" href="https://fonts.bunny.net/css?family=nunito:400,600" />
     <link rel="stylesheet" href="/app.css" />
   </head>
   <body>
-    <header class="top">
-      <h1>Gos</h1>
-      <p id="clock" class="clock">--:-- Madrid</p>
-    </header>
-    <main>
-      <section class="kennel" aria-label="Gos">
-        <div class="porthole" id="porthole" data-mood="awake">
-          <svg viewBox="0 0 200 220" aria-hidden="true">
-            <ellipse cx="100" cy="190" rx="72" ry="16" fill="#6b4630" />
-            <path class="tail" d="M148 148 C186 136 188 104 164 100" fill="none" stroke="#e2c294" stroke-width="12" stroke-linecap="round" />
-            <ellipse cx="100" cy="152" rx="54" ry="40" fill="#f3ddb8" />
-            <ellipse class="spot" cx="78" cy="148" rx="14" ry="10" fill="#e2c294" />
-            <ellipse cx="66" cy="78" rx="18" ry="28" fill="#e2c294" transform="rotate(-18 66 78)" />
-            <ellipse cx="136" cy="74" rx="16" ry="26" fill="#e2c294" transform="rotate(14 136 74)" />
-            <circle cx="100" cy="96" r="42" fill="#f3ddb8" />
-            <g class="eye">
-              <ellipse cx="84" cy="96" rx="7" ry="9" fill="#241c16" />
-            </g>
-            <g class="eye">
-              <ellipse cx="118" cy="96" rx="7" ry="9" fill="#241c16" />
-            </g>
-            <ellipse cx="101" cy="112" rx="8" ry="6" fill="#241c16" />
-            <path class="mouth-closed" d="M88 122 Q101 130 114 122" fill="none" stroke="#241c16" stroke-width="2.5" stroke-linecap="round" />
-            <g class="mouth-open">
-              <ellipse cx="101" cy="126" rx="12" ry="9" fill="#241c16" />
-              <ellipse cx="101" cy="130" rx="7" ry="4" fill="#e24b32" />
-            </g>
-            <path d="M68 132 Q101 150 134 132" fill="none" stroke="#e24b32" stroke-width="8" stroke-linecap="round" />
-            <circle cx="101" cy="142" r="6" fill="#f4efe4" stroke="#241c16" stroke-width="1.5" />
-          </svg>
-          <p class="zs" id="zs" hidden>z z z</p>
+    <div class="app">
+      <header class="top">
+        <div class="who">
+          <h1>Gos</h1>
+          <p id="caption" class="caption" aria-live="polite">Awake</p>
+          <p id="life" class="life" hidden>Puppy</p>
+          <p id="hurt" class="hurt" hidden></p>
         </div>
-        <p id="caption" class="caption" aria-live="polite">Awake</p>
-        <p id="hurt" class="hurt" hidden></p>
-        <p id="life" class="life">Puppy</p>
+        <p id="clock" class="clock">--:-- Madrid</p>
+        <div class="actions">
+          <button type="button" id="open-yard" aria-controls="yard" aria-expanded="false" hidden>Yard</button>
+          <button type="button" id="open-door" aria-controls="door" aria-expanded="false">Guestbook</button>
+        </div>
+      </header>
+      <div class="stage">
+        <canvas id="view" aria-label="Gos on his disk. Drag to turn the view."></canvas>
+      </div>
+      <section id="yard" class="panel" hidden>
+        <h2>Yard</h2>
+        <ul id="bones" class="bones"></ul>
+        <form id="bury">
+          <label for="note">Tea note</label>
+          <input id="note" name="note" maxlength="500" required />
+          <button type="submit">Bury</button>
+        </form>
       </section>
-      <section class="panel talk">
-        <h2>Chat</h2>
+      <section id="door" class="panel" hidden>
+        <h2>Guestbook</h2>
+        <ul id="gossip" class="gossip" hidden></ul>
+        <form id="guest">
+          <label for="gname">Name</label>
+          <input id="gname" name="name" maxlength="40" required />
+          <label for="gnote">Note</label>
+          <textarea id="gnote" name="note" rows="2" maxlength="280"></textarea>
+          <button type="submit">Sign</button>
+        </form>
+        <form id="login">
+          <label for="token">Owner token</label>
+          <input id="token" name="token" type="password" autocomplete="current-password" required />
+          <button type="submit">Enter</button>
+        </form>
+        <button type="button" id="leave" hidden>Leave</button>
+      </section>
+      <section class="sheet" aria-label="Chat">
+        <h2 class="sheet-title">Chat</h2>
         <ol id="log" class="log" aria-live="polite"></ol>
         <form id="chat">
           <label for="msg">Message</label>
-          <textarea id="msg" name="message" rows="3" maxlength="2000" required></textarea>
+          <input id="msg" name="message" maxlength="2000" required />
           <button type="submit">Send</button>
         </form>
         <p id="alert" class="alert" role="alert" hidden></p>
       </section>
-      <aside class="side">
-        <section class="panel" id="yard" hidden>
-          <h2>Yard</h2>
-          <ul id="bones" class="bones"></ul>
-          <form id="bury">
-            <label for="note">Tea note</label>
-            <input id="note" name="note" maxlength="500" required />
-            <button type="submit">Bury</button>
-          </form>
-        </section>
-        <section class="panel" id="door">
-          <h2>Guestbook</h2>
-          <ul id="gossip" class="gossip" hidden></ul>
-          <form id="guest">
-            <label for="gname">Name</label>
-            <input id="gname" name="name" maxlength="40" required />
-            <label for="gnote">Note</label>
-            <textarea id="gnote" name="note" rows="3" maxlength="280"></textarea>
-            <button type="submit">Sign</button>
-          </form>
-        </section>
-        <section class="panel" id="owner">
-          <h2>Owner</h2>
-          <form id="login">
-            <label for="token">Owner token</label>
-            <input id="token" name="token" type="password" autocomplete="current-password" required />
-            <button type="submit">Enter</button>
-          </form>
-          <button type="button" id="leave" hidden>Leave</button>
-        </section>
-      </aside>
-    </main>
-    <script src="/app.js"></script>
+    </div>
+    <script src="/bundle.js" type="module"></script>
   </body>
 </html>

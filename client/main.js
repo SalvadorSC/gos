@@ -1,20 +1,24 @@
-const porthole = document.querySelector("#porthole");
+import { createScene } from "./scene.js";
+
 const caption = document.querySelector("#caption");
 const life = document.querySelector("#life");
-const zs = document.querySelector("#zs");
+const hurt = document.querySelector("#hurt");
+const clock = document.querySelector("#clock");
 const log = document.querySelector("#log");
 const bones = document.querySelector("#bones");
 const gossip = document.querySelector("#gossip");
 const yard = document.querySelector("#yard");
+const door = document.querySelector("#door");
 const guestForm = document.querySelector("#guest");
 const loginForm = document.querySelector("#login");
 const leave = document.querySelector("#leave");
 const alertBox = document.querySelector("#alert");
-const clock = document.querySelector("#clock");
-const hurt = document.querySelector("#hurt");
+const yardButton = document.querySelector("#open-yard");
+const doorButton = document.querySelector("#open-door");
+const canvas = document.querySelector("#view");
 
 const visitorThread = [];
-let lastCount = 0;
+let panel = null;
 
 function showError(text) {
   alertBox.hidden = !text;
@@ -34,73 +38,66 @@ function madridClock(date) {
 function renderList(node, items, emptyText, map) {
   node.replaceChildren();
   if (!items.length) {
-    const li = document.createElement("li");
-    li.className = "empty";
-    li.textContent = emptyText;
-    node.append(li);
+    const item = document.createElement("li");
+    item.className = "empty";
+    item.textContent = emptyText;
+    node.append(item);
     return;
   }
   for (const item of items) node.append(map(item));
 }
 
+function setPanel(next) {
+  panel = panel === next ? null : next;
+  yard.hidden = panel !== "yard";
+  door.hidden = panel !== "door";
+  document.querySelector(".app").classList.toggle("panel-open", panel !== null);
+  yardButton.setAttribute("aria-expanded", String(panel === "yard"));
+  doorButton.setAttribute("aria-expanded", String(panel === "door"));
+}
+
 function render(state) {
-  porthole.dataset.mood = state.mood;
   caption.textContent = state.caption;
   life.textContent = state.life === "puppy" ? "Puppy" : "Grown";
   life.hidden = state.caption === life.textContent;
-  zs.hidden = state.mood !== "dreaming";
-  yard.hidden = !state.owner;
-  gossip.hidden = !state.owner;
-  guestForm.hidden = state.owner;
-  loginForm.hidden = state.owner;
-  leave.hidden = !state.owner;
   hurt.hidden = !state.hurt;
   hurt.textContent = state.hurt ? "You restored an older copy of me." : "";
+  yardButton.hidden = !state.owner;
+  if (!state.owner && panel === "yard") setPanel(null);
+  guestForm.hidden = state.owner;
+  gossip.hidden = !state.owner;
+  loginForm.hidden = state.owner;
+  leave.hidden = !state.owner;
 
   if (!state.owner && visitorThread.length === 0 && state.greeting) {
     visitorThread.push({ role: "gos", content: state.greeting });
   }
   const shown = state.owner ? state.messages : visitorThread;
   renderList(log, shown, "No messages.", (message) => {
-    const li = document.createElement("li");
-    li.className = message.role === "gos" ? "gos" : "user";
-    li.textContent = message.content;
-    return li;
+    const item = document.createElement("li");
+    item.className = message.role === "gos" ? "gos" : "user";
+    item.textContent = message.content;
+    return item;
   });
-  if (shown.length > lastCount) {
-    porthole.classList.remove("wag");
-    void porthole.offsetWidth;
-    porthole.classList.add("wag");
-  }
-  lastCount = shown.length;
+  log.scrollTop = log.scrollHeight;
 
   renderList(bones, state.bones, "No bones.", (bone) => {
-    const li = document.createElement("li");
+    const item = document.createElement("li");
     const span = document.createElement("span");
     span.textContent = bone.note;
     const button = document.createElement("button");
     button.type = "button";
     button.textContent = "Delete";
     button.addEventListener("click", () => removeBone(bone.id));
-    li.append(span, button);
-    return li;
+    item.append(span, button);
+    return item;
   });
-
   renderList(gossip, state.gossip, "No visitors.", (line) => {
-    const li = document.createElement("li");
-    li.textContent = line;
-    return li;
+    const item = document.createElement("li");
+    item.textContent = line;
+    return item;
   });
-}
-
-async function refresh() {
-  const response = await fetch("/api/state");
-  if (!response.ok) {
-    showError("Could not load Gos. Try again.");
-    return;
-  }
-  showError("");
-  render(await response.json());
+  scene.setState(state);
 }
 
 async function sendJson(url, options) {
@@ -113,6 +110,21 @@ async function sendJson(url, options) {
   return body;
 }
 
+async function refresh() {
+  const response = await fetch("/api/state");
+  if (!response.ok) {
+    showError("Could not load Gos. Try again.");
+    return;
+  }
+  showError("");
+  render(await response.json());
+}
+
+const scene = await createScene(canvas).catch((error) => {
+  showError("The scene did not start. Try again.");
+  throw error;
+});
+
 document.querySelector("#chat").addEventListener("submit", async (event) => {
   event.preventDefault();
   const field = document.querySelector("#msg");
@@ -120,10 +132,7 @@ document.querySelector("#chat").addEventListener("submit", async (event) => {
   button.disabled = true;
   try {
     const sent = field.value;
-    const state = await sendJson("/api/chat", {
-      method: "POST",
-      body: JSON.stringify({ message: sent }),
-    });
+    const state = await sendJson("/api/chat", { method: "POST", body: JSON.stringify({ message: sent }) });
     field.value = "";
     if (!state.owner) {
       visitorThread.push({ role: "user", content: sent });
@@ -160,19 +169,18 @@ async function removeBone(id) {
 
 document.querySelector("#guest").addEventListener("submit", async (event) => {
   event.preventDefault();
-  const name = document.querySelector("#gname").value;
-  const note = document.querySelector("#gnote").value;
   try {
-    await sendJson("/api/guestbook", { method: "POST", body: JSON.stringify({ name, note }) });
+    await sendJson("/api/guestbook", {
+      method: "POST",
+      body: JSON.stringify({
+        name: document.querySelector("#gname").value,
+        note: document.querySelector("#gnote").value,
+      }),
+    });
     document.querySelector("#gname").value = "";
     document.querySelector("#gnote").value = "";
-    showError("");
     visitorThread.push({ role: "gos", content: "Signed." });
-    const done = document.createElement("li");
-    done.className = "gos";
-    done.textContent = "Signed.";
-    log.querySelector(".empty")?.remove();
-    log.append(done);
+    await refresh();
   } catch (error) {
     showError(error.message);
   }
@@ -180,9 +188,11 @@ document.querySelector("#guest").addEventListener("submit", async (event) => {
 
 document.querySelector("#login").addEventListener("submit", async (event) => {
   event.preventDefault();
-  const token = document.querySelector("#token").value;
   try {
-    await sendJson("/api/login", { method: "POST", body: JSON.stringify({ token }) });
+    await sendJson("/api/login", {
+      method: "POST",
+      body: JSON.stringify({ token: document.querySelector("#token").value }),
+    });
     document.querySelector("#token").value = "";
     await refresh();
   } catch (error) {
@@ -195,14 +205,16 @@ leave.addEventListener("click", async () => {
   await refresh();
 });
 
-function tick() {
+yardButton.addEventListener("click", () => setPanel("yard"));
+doorButton.addEventListener("click", () => setPanel("door"));
+
+function tickClock() {
   clock.textContent = `${madridClock(new Date())} Madrid`;
 }
-tick();
-setInterval(tick, 30_000);
-
+tickClock();
+setInterval(tickClock, 30_000);
 document.addEventListener("visibilitychange", () => {
   if (document.visibilityState === "visible") refresh();
 });
 
-refresh();
+await refresh();

@@ -238,16 +238,31 @@ const TYPES: Record<string, string> = {
   ".html": "text/html; charset=utf-8",
   ".css": "text/css; charset=utf-8",
   ".js": "text/javascript; charset=utf-8",
+  ".png": "image/png",
   ".svg": "image/svg+xml",
 };
 
 async function serveStatic(publicDir: string, pathname: string, res: ServerResponse): Promise<void> {
+  const artDir = path.resolve(publicDir, "../art");
+  if (pathname.startsWith("/art/")) {
+    const file = path.resolve(artDir, pathname.slice("/art/".length));
+    if (!file.startsWith(artDir + path.sep) && file !== artDir) {
+      sendJson(res, 404, { error: "Not found." });
+      return;
+    }
+    await sendFile(file, res);
+    return;
+  }
   const requested = pathname === "/" ? "/index.html" : pathname;
   const file = path.resolve(publicDir, `.${requested}`);
-  if (!file.startsWith(path.resolve(publicDir))) {
+  if (!file.startsWith(path.resolve(publicDir) + path.sep) && file !== path.resolve(publicDir)) {
     sendJson(res, 404, { error: "Not found." });
     return;
   }
+  await sendFile(file, res);
+}
+
+async function sendFile(file: string, res: ServerResponse): Promise<void> {
   try {
     const body = await readFile(file);
     const ext = path.extname(file);

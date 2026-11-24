@@ -19,6 +19,8 @@ Gos is a talking dog that runs on a Fly Sprite. When the Sprite sleeps, the next
 - If the owner has been away for `NUDGE_AFTER_HOURS` (default 48), Gos sends "you haven't walked me in 2 days". A sleeping Sprite cannot run a timer. The check runs when a visit wakes him, or when you POST `/api/nudge`.
 - The clock is Europe/Madrid. From 00:00 to 07:00 he is sleepy and grumbles in Catalan. Otherwise he answers in English, Spanish, or Catalan, following the message. He likes tea. Salvador is learning Mandarin and runs @madtea.salva, so Gos may say 茶 or mention the account when that fits.
 
+The page is a toy diorama in the browser. Gos and the doghouse are carved from the pixel views in `art/` (front, back, side, and top). The disk floats in a purple sky. Each bone file is a mound in the yard, and a deleted bone leaves a hole. Drag the scene to turn it.
+
 ## Run it locally
 
 ```bash
@@ -27,9 +29,9 @@ npm install
 npm start
 ```
 
-`npm start` compiles `src/` into `dist/` when that build is missing or older than the source, then serves http://localhost:8080. `.env.example` sets `MOCK_LLM=1`, so the chat answers without keys. The owner token in the example is `change-me-local-only`. Type it under Owner and press Enter.
+`npm start` compiles the server and the page when those builds are missing or older than the source, then serves http://localhost:8080. `.env.example` sets `MOCK_LLM=1`, so the chat answers without keys. The owner token in the example is `change-me-local-only`. Open Guestbook, type it under Owner token, and press Enter.
 
-`npm run dev` runs the TypeScript directly.
+`npm run dev` builds the page if it is missing, then runs the server from TypeScript.
 
 ## Tests
 
@@ -37,7 +39,7 @@ npm start
 npm test
 ```
 
-The tests cover wake and dream detection, the yard diff, life stage, and Madrid night hours.
+The tests cover wake and dream detection, the yard diff, life stage, Madrid night hours, and voxel carving.
 
 ## Put him on a Sprite
 
