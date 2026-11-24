@@ -97,7 +97,18 @@ function render(state) {
     item.textContent = line;
     return item;
   });
+  const shownLine = state.owner
+    ? lastGos(state.messages)
+    : lastGos(visitorThread) || state.reply || state.greeting || "";
+  scene.setSpeech(shownLine);
   scene.setState(state);
+}
+
+function lastGos(messages) {
+  for (let index = messages.length - 1; index >= 0; index -= 1) {
+    if (messages[index].role === "gos") return messages[index].content;
+  }
+  return "";
 }
 
 async function sendJson(url, options) {

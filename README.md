@@ -19,7 +19,7 @@ Gos is a talking dog that runs on a Fly Sprite. When the Sprite sleeps, the next
 - If the owner has been away for `NUDGE_AFTER_HOURS` (default 48), Gos sends "you haven't walked me in 2 days". A sleeping Sprite cannot run a timer. The check runs when a visit wakes him, or when you POST `/api/nudge`.
 - The clock is Europe/Madrid. From 00:00 to 07:00 he is sleepy and grumbles in Catalan. Otherwise he answers in English, Spanish, or Catalan, following the message. He likes tea. Salvador is learning Mandarin and runs @madtea.salva, so Gos may say 茶 or mention the account when that fits.
 
-The page is a toy diorama. Gos is carved from the pixel views in `art/` (front, back, side, and top). The grass is a flat disc, and the doghouse is a simple shaded model. Each bone file is a mound in the yard, and a deleted bone leaves a hole. Drag to turn the view. The camera stays above the grass.
+The page is a toy diorama. Gos is carved from the pixel views in `art/` (front, back, side, and top). The grass is a flat disc, and the doghouse is a simple shaded model. Each bone file is a mound in the yard, and a deleted bone leaves a hole. Drag to turn the view. The camera stays above the grass. His lines, and the sleep label, float above his head.
 
 The clouds adapt the volumetric ray march from [leoawen/volumetric-clouds](https://github.com/leoawen/volumetric-clouds) by Leonardo Soares Gonçalves, MIT licensed. A deformed ellipsoid mask, a Henyey-Greenstein phase, and a short light ray (Beer's law) march through each cloud. View steps are capped at 8 and light steps at 2. Screens narrower than 768px, or devices that report 2 GB of memory or less, use soft sprite clouds instead.
 

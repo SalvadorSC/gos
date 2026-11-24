@@ -1,5 +1,6 @@
 import {
   AmbientLight,
+  Box3,
   BoxGeometry,
   BufferGeometry,
   CanvasTexture,
@@ -19,8 +20,6 @@ import {
   Object3D,
   PerspectiveCamera,
   Scene,
-  Sprite,
-  SpriteMaterial,
   SRGBColorSpace,
   Vector3,
   WebGLRenderer,
@@ -28,7 +27,7 @@ import {
 import { carveViews } from "../src/carve.ts";
 import { cloudMode, createClouds } from "./clouds.js";
 
-const VOXEL = 0.09;
+const VOXEL = 0.046;
 const GROUND = 0.02;
 const POLAR_MIN = 0.38;
 const POLAR_MAX = Math.PI / 2 - 0.18;
@@ -93,24 +92,6 @@ function voxelMesh(voxels, pivot) {
   geometry.setAttribute("normal", new Float32BufferAttribute(normals, 3));
   geometry.setAttribute("color", new Float32BufferAttribute(colors, 3));
   return new Mesh(geometry, new MeshBasicMaterial({ vertexColors: true }));
-}
-
-function labelSprite(text) {
-  const canvas = document.createElement("canvas");
-  canvas.width = 160;
-  canvas.height = 80;
-  const context = canvas.getContext("2d");
-  context.fillStyle = "#f4efe4";
-  context.fillRect(8, 8, 144, 64);
-  context.fillStyle = "#241c16";
-  context.font = "600 36px Nunito, sans-serif";
-  context.textAlign = "center";
-  context.fillText(text, 80, 52);
-  const texture = new CanvasTexture(canvas);
-  texture.colorSpace = SRGBColorSpace;
-  const sprite = new Sprite(new SpriteMaterial({ map: texture, transparent: true }));
-  sprite.scale.set(0.85, 0.42, 1);
-  return sprite;
 }
 
 function skyCanvas() {
@@ -180,9 +161,11 @@ export async function createScene(canvas) {
   yard.position.set(0, GROUND + 0.004, 1.05);
   island.add(grass, yard);
 
-  const [bodyVoxels, headVoxels, legVoxels, tailVoxels] = await Promise.all([
+  const [bodyVoxels, headVoxels, snoutVoxels, earVoxels, legVoxels, tailVoxels] = await Promise.all([
     loadPart("gos-body"),
     loadPart("gos-head"),
+    loadPart("gos-snout"),
+    loadPart("gos-ear"),
     loadPart("gos-leg"),
     loadPart("gos-tail"),
   ]);
@@ -201,28 +184,61 @@ export async function createScene(canvas) {
   house.add(walls, roof, door);
   house.position.set(0, GROUND, -1.25);
   island.add(house);
-  const sleepBubble = labelSprite("z z z");
-  sleepBubble.position.set(0, 1.45, -1.25);
-  sleepBubble.visible = false;
-  island.add(sleepBubble);
 
   const dog = new Group();
-  const body = voxelMesh(bodyVoxels, { x: 7, y: 0, z: 6 });
-  body.position.y = 7 * VOXEL;
-  const head = voxelMesh(headVoxels, { x: 6, y: 1, z: 3 });
-  head.position.set(0, 7 * VOXEL + 0.42, 0.42);
-  const tail = voxelMesh(tailVoxels, { x: 2, y: 1, z: 1 });
-  tail.position.set(0, 7 * VOXEL + 0.28, -0.5);
-  const legs = [0, 1, 2, 3].map((index) => {
-    const leg = voxelMesh(legVoxels, { x: 2, y: 7, z: 2 });
-    leg.position.set(index % 2 === 0 ? -0.28 : 0.28, 7 * VOXEL, index < 2 ? 0.22 : -0.22);
-    dog.add(leg);
-    return leg;
+  const measure = (voxels) => {
+    const min = { x: Infinity, y: Infinity, z: Infinity };
+    const max = { x: -Infinity, y: -Infinity, z: -Infinity };
+    for (const voxel of voxels) {
+      min.x = Math.min(min.x, voxel.x);
+      min.y = Math.min(min.y, voxel.y);
+      min.z = Math.min(min.z, voxel.z);
+      max.x = Math.max(max.x, voxel.x + 1);
+      max.y = Math.max(max.y, voxel.y + 1);
+      max.z = Math.max(max.z, voxel.z + 1);
+    }
+    return { min, max };
+  };
+  const mid = (ext, axis) => (ext.min[axis] + ext.max[axis]) / 2;
+  const bodyExt = measure(bodyVoxels);
+  const headExt = measure(headVoxels);
+  const snoutExt = measure(snoutVoxels);
+  const earExt = measure(earVoxels);
+  const legExt = measure(legVoxels);
+  const tailExt = measure(tailVoxels);
+  const body = voxelMesh(bodyVoxels, { x: mid(bodyExt, "x"), y: bodyExt.min.y, z: mid(bodyExt, "z") });
+  const headMesh = voxelMesh(headVoxels, { x: mid(headExt, "x"), y: headExt.min.y, z: mid(headExt, "z") });
+  const snout = voxelMesh(snoutVoxels, { x: mid(snoutExt, "x"), y: mid(snoutExt, "y"), z: snoutExt.min.z });
+  const tail = voxelMesh(tailVoxels, { x: mid(tailExt, "x"), y: mid(tailExt, "y"), z: tailExt.max.z });
+  const legH = (legExt.max.y - legExt.min.y) * VOXEL;
+  const bodyH = (bodyExt.max.y - bodyExt.min.y) * VOXEL;
+  const bodyD = (bodyExt.max.z - bodyExt.min.z) * VOXEL;
+  const bodyW = (bodyExt.max.x - bodyExt.min.x) * VOXEL;
+  const headH = (headExt.max.y - headExt.min.y) * VOXEL;
+  const headW = (headExt.max.x - headExt.min.x) * VOXEL;
+  const headD = (headExt.max.z - headExt.min.z) * VOXEL;
+  body.position.y = legH * 0.55;
+  const head = new Group();
+  head.position.set(0, body.position.y + bodyH * 0.78, bodyD * 0.34);
+  snout.position.set(0, -headH * 0.28, headD * 0.62);
+  const ears = [-1, 1].map((side) => {
+    const flap = voxelMesh(earVoxels, { x: mid(earExt, "x"), y: earExt.max.y, z: mid(earExt, "z") });
+    flap.position.set(side * (headW * 0.46 + 0.02), headH * 0.42, 0.02);
+    flap.rotation.z = side * 0.55;
+    head.add(flap);
+    return flap;
   });
-  const dreamBubble = labelSprite("z z z");
-  dreamBubble.position.set(0.15, 1.65, 0.15);
-  dreamBubble.visible = false;
-  dog.add(body, head, tail, dreamBubble);
+  head.add(headMesh, snout);
+  const legs = [0, 1, 2, 3].map((index) => {
+    const limb = voxelMesh(legVoxels, { x: mid(legExt, "x"), y: legExt.max.y, z: mid(legExt, "z") });
+    limb.position.set(index % 2 === 0 ? -bodyW * 0.34 : bodyW * 0.34, legH, index < 2 ? bodyD * 0.3 : -bodyD * 0.28);
+    dog.add(limb);
+    return limb;
+  });
+  tail.position.set(0, body.position.y + bodyH * 0.62, -bodyD * 0.48);
+  tail.rotation.x = -0.6;
+  dog.add(body, head, tail);
+  const bodyRest = body.position.y;
   dog.position.y = GROUND;
   island.add(dog);
   scene.add(island);
@@ -241,6 +257,13 @@ export async function createScene(canvas) {
   const target = new Vector3(0.4, GROUND, 0.6);
   let sniff = 0;
   let time = 0;
+  let speechText = "";
+  const bubbleRoot = document.querySelector("#float-bubbles");
+  const zzz = document.querySelector("#zzz");
+  const speech = document.querySelector("#speech");
+  const safeProbe = document.createElement("div");
+  safeProbe.style.cssText = "position:fixed;visibility:hidden;padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left)";
+  document.body.append(safeProbe);
 
   function placeOnYard(id) {
     const seed = hash(id);
@@ -399,24 +422,26 @@ export async function createScene(canvas) {
     legs.forEach((leg, index) => {
       leg.rotation.x = Math.sin(stepPhase + index * Math.PI) * (mode === "dig" ? 0.9 : walking ? 0.55 : 0);
     });
-    tail.rotation.z = mode === "wander" || mode === "dream" ? Math.sin(time * 7) * 0.45 : 0.5;
-    if (mode === "dig" || sniff > 0) head.rotation.x = 0.55;
+    if (mode === "dig" || sniff > 0) head.rotation.x = 0.4;
     else if (mode === "bark") head.rotation.x = -0.3;
     else head.rotation.x = 0;
     head.rotation.z = mode === "wander" ? Math.sin(time * 1.4) * 0.08 : 0;
-    body.position.y = 7 * VOXEL + (walking ? Math.abs(Math.sin(time * 10)) * 0.04 : 0);
+    body.position.y = bodyRest + (walking ? Math.abs(Math.sin(time * 10)) * 0.03 : 0);
     dog.visible = !(mode === "sleep" && distance < 0.25);
-    dreamBubble.visible = mode === "dream";
-    sleepBubble.visible = mode === "sleep";
+    ears.forEach((flap, index) => {
+      const base = index === 0 ? -0.4 : 0.4;
+      flap.rotation.z = base + Math.sin(time * 2.2 + index) * 0.08;
+    });
+    tail.rotation.y = mode === "sulking" ? 0.2 : Math.sin(time * 8) * 0.65;
+    dog.position.y = GROUND + (walking ? 0 : Math.sin(time * 2.4) * 0.02);
     sniff = Math.max(0, sniff - dt);
     if (mode === "wander" && distance <= 0.08) {
       const near = [...mounds.values()].find((mound) => Math.hypot(mound.x - dog.position.x, mound.z - dog.position.z) < 0.45);
       if (near) sniff = 0.8;
       pickWander();
     }
-    dog.scale.setScalar(puppy ? 0.62 : 1);
-    const bubbleScale = puppy ? 1.6 : 1;
-    dreamBubble.scale.set(0.95 * bubbleScale, 0.48 * bubbleScale, 1);
+    dog.scale.setScalar(puppy ? 0.72 : 1);
+    placeBubbles();
     renderer.render(scene, camera);
     frame = requestAnimationFrame(tick);
   }
@@ -427,7 +452,37 @@ export async function createScene(canvas) {
   const observer = new ResizeObserver(() => updateCamera());
   observer.observe(canvas.parentElement ?? canvas);
 
+  function placeBubbles() {
+    const showZ = mode === "dream" || mode === "sleep";
+    zzz.hidden = !showZ;
+    speech.hidden = !speechText;
+    speech.textContent = speechText;
+    bubbleRoot.hidden = zzz.hidden && speech.hidden;
+    if (bubbleRoot.hidden) return;
+    const box = new Box3().setFromObject(dog.visible ? dog : house);
+    const anchor = new Vector3((box.min.x + box.max.x) / 2, box.max.y + 0.18, (box.min.z + box.max.z) / 2);
+    const projected = anchor.project(camera);
+    const canvasRect = canvas.getBoundingClientRect();
+    const px = (projected.x * 0.5 + 0.5) * canvasRect.width + canvasRect.left;
+    const py = (-projected.y * 0.5 + 0.5) * canvasRect.height + canvasRect.top;
+    const width = bubbleRoot.offsetWidth;
+    const height = bubbleRoot.offsetHeight;
+    const pad = getComputedStyle(safeProbe);
+    const minLeft = (parseFloat(pad.paddingLeft) || 0) + 8;
+    const minTop = (parseFloat(pad.paddingTop) || 0) + 8;
+    const maxLeft = window.innerWidth - (parseFloat(pad.paddingRight) || 0) - 8 - width;
+    const maxTop = window.innerHeight - (parseFloat(pad.paddingBottom) || 0) - 8 - height;
+    const left = Math.min(Math.max(px - width / 2, minLeft), Math.max(minLeft, maxLeft));
+    const top = Math.min(Math.max(py - height, minTop), Math.max(minTop, maxTop));
+    bubbleRoot.style.left = `${left}px`;
+    bubbleRoot.style.top = `${top}px`;
+  }
+
   return {
+    setSpeech(text) {
+      const clean = text ? text.replace(/\s+/g, " ").trim() : "";
+      speechText = clean.length > 140 ? `${clean.slice(0, 137)}...` : clean;
+    },
     setState(state) {
       mood = state.mood;
       night = Boolean(state.night);
