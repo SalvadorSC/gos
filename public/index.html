@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>Gos</title>
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <link rel="stylesheet" href="https://fonts.bunny.net/css?family=nunito:400,600" />
+    <link rel="stylesheet" href="/app.css" />
+  </head>
+  <body>
+    <div class="app">
+      <header class="top">
+        <div class="who">
+          <h1>Gos</h1>
+          <p id="caption" class="caption" aria-live="polite">Awake</p>
+          <p id="life" class="life" hidden>Puppy</p>
+          <p id="hurt" class="hurt" hidden></p>
+        </div>
+        <p id="clock" class="clock">--:-- Madrid</p>
+        <div class="actions">
+          <button type="button" id="open-yard" aria-controls="yard" aria-expanded="false" hidden>Yard</button>
+          <button type="button" id="open-door" aria-controls="door" aria-expanded="false">Guestbook</button>
+        </div>
+      </header>
+      <div class="stage">
+        <canvas id="view" aria-label="Gos on the lawn. Drag to turn the view."></canvas>
+      </div>
+      <div id="float-bubbles" class="float-bubbles" hidden>
+        <p id="zzz" class="bubble" hidden>z z z</p>
+        <p id="speech" class="bubble" hidden></p>
+      </div>
+      <section id="yard" class="panel" hidden>
+        <h2>Yard</h2>
+        <ul id="bones" class="bones"></ul>
+        <form id="bury">
+          <label for="note">Tea note</label>
+          <input id="note" name="note" maxlength="500" required />
+          <button type="submit">Bury</button>
+        </form>
+      </section>
+      <section id="door" class="panel" hidden>
+        <h2>Guestbook</h2>
+        <ul id="gossip" class="gossip" hidden></ul>
+        <form id="guest">
+          <label for="gname">Name</label>
+          <input id="gname" name="name" maxlength="40" required />
+          <label for="gnote">Note</label>
+          <textarea id="gnote" name="note" rows="2" maxlength="280"></textarea>
+          <button type="submit">Sign</button>
+        </form>
+        <form id="login">
+          <label for="token">Owner token</label>
+          <input id="token" name="token" type="password" autocomplete="current-password" required />
+          <button type="submit">Enter</button>
+        </form>
+        <button type="button" id="leave" hidden>Leave</button>
+      </section>
+      <section class="sheet" aria-label="Chat">
+        <h2 class="sheet-title">Chat</h2>
+        <ol id="log" class="log" aria-live="polite"></ol>
+        <form id="chat">
+          <label for="msg">Message</label>
+          <input id="msg" name="message" maxlength="2000" required />
+          <button type="submit">Send</button>
+        </form>
+        <p id="alert" class="alert" role="alert" hidden></p>
+      </section>
+    </div>
+    <script src="/bundle.js" type="module"></script>
+  </body>
+</html>

@@ -1,0 +1,7 @@
+node_modules/
+dist/
+data/
+public/bundle.js
+.env
+.gos-checkpoints
+*.log
