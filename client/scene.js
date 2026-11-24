@@ -3,17 +3,21 @@ import {
   BoxGeometry,
   BufferGeometry,
   CanvasTexture,
+  CircleGeometry,
+  ConeGeometry,
   CylinderGeometry,
   DirectionalLight,
   Float32BufferAttribute,
   Group,
+  HemisphereLight,
   InstancedMesh,
   MathUtils,
   Mesh,
   MeshBasicMaterial,
   MeshLambertMaterial,
+  MeshStandardMaterial,
   Object3D,
-  OrthographicCamera,
+  PerspectiveCamera,
   Scene,
   Sprite,
   SpriteMaterial,
@@ -22,9 +26,16 @@ import {
   WebGLRenderer,
 } from "three";
 import { carveViews } from "../src/carve.ts";
+import { cloudMode, createClouds } from "./clouds.js";
 
 const VOXEL = 0.09;
-const DISK_TOP = 0.5;
+const GROUND = 0.02;
+const POLAR_MIN = 0.38;
+const POLAR_MAX = Math.PI / 2 - 0.18;
+const AZIMUTH_MIN = -0.7;
+const AZIMUTH_MAX = 1.85;
+const DISTANCE_MIN = 7.5;
+const DISTANCE_MAX = 14.5;
 
 async function loadView(url) {
   const response = await fetch(url);
@@ -128,13 +139,14 @@ export async function createScene(canvas) {
   renderer.outputColorSpace = SRGBColorSpace;
   const scene = new Scene();
   scene.background = skyCanvas();
-  const camera = new OrthographicCamera(-4, 4, 4, -4, 0.1, 80);
-  let frustum = 4.4;
-  let azimuth = 0.55;
-  let polar = 1.02;
+  const camera = new PerspectiveCamera(30, 1, 0.1, 80);
+  let distance = 10.5;
+  let azimuth = 0.62;
+  let polar = 1.05;
 
-  scene.add(new AmbientLight(0xfff4ea, 0.72));
-  const sun = new DirectionalLight(0xfff0d8, 1.15);
+  scene.add(new HemisphereLight(0xcbb6ea, 0x6d8f48, 0.55));
+  scene.add(new AmbientLight(0xfff4ea, 0.28));
+  const sun = new DirectionalLight(0xffe4c4, 1.25);
   sun.position.set(4, 8, 3);
   scene.add(sun);
 
@@ -150,52 +162,47 @@ export async function createScene(canvas) {
   stars.add(starMesh);
   scene.add(stars);
 
-  const cloudMaterial = new MeshLambertMaterial({ color: 0xd2c0ea });
-  for (const spot of [
-    [-3.4, 3.1, -2.2],
-    [3.6, 2.7, -3],
-    [0.4, 3.6, -4.2],
-  ]) {
-    const cloud = new Group();
-    cloud.position.set(spot[0], spot[1], spot[2]);
-    for (let index = 0; index < 4; index += 1) {
-      const puff = new Mesh(new BoxGeometry(0.7, 0.28, 0.4), cloudMaterial);
-      puff.position.set(index * 0.38 - 0.5, index % 2 === 0 ? 0.08 : 0, 0);
-      cloud.add(puff);
-    }
-    scene.add(cloud);
-  }
+  const clouds = createClouds(scene, cloudMode(canvas.clientWidth || window.innerWidth));
+  canvas.dataset.clouds = clouds.mode;
 
   const island = new Group();
-  const dirt = new Mesh(
-    new CylinderGeometry(3.45, 3.7, 0.72, 10),
-    new MeshLambertMaterial({ color: 0x6b4630, flatShading: true }),
-  );
   const grass = new Mesh(
-    new CylinderGeometry(3.28, 3.28, 0.16, 10),
-    new MeshLambertMaterial({ color: 0x7ea35a, flatShading: true }),
+    new CircleGeometry(3.2, 64),
+    new MeshStandardMaterial({ color: 0x6f9a52, roughness: 0.9, metalness: 0 }),
   );
-  grass.position.y = 0.4;
+  grass.rotation.x = -Math.PI / 2;
+  grass.position.y = GROUND;
   const yard = new Mesh(
-    new CylinderGeometry(1.42, 1.42, 0.08, 8),
-    new MeshLambertMaterial({ color: 0x8a5a38, flatShading: true }),
+    new CircleGeometry(1.25, 40),
+    new MeshStandardMaterial({ color: 0x8d6244, roughness: 1, metalness: 0 }),
   );
-  yard.position.set(0, DISK_TOP, 1.15);
-  island.add(dirt, grass, yard);
+  yard.rotation.x = -Math.PI / 2;
+  yard.position.set(0, GROUND + 0.004, 1.05);
+  island.add(grass, yard);
 
-  const [bodyVoxels, headVoxels, legVoxels, tailVoxels, houseVoxels] = await Promise.all([
+  const [bodyVoxels, headVoxels, legVoxels, tailVoxels] = await Promise.all([
     loadPart("gos-body"),
     loadPart("gos-head"),
     loadPart("gos-leg"),
     loadPart("gos-tail"),
-    loadPart("doghouse"),
   ]);
 
-  const house = voxelMesh(houseVoxels, { x: 10, y: 0, z: 8 });
-  house.position.set(0, DISK_TOP, -1.45);
+  const wood = new MeshStandardMaterial({ color: 0xd7a36a, roughness: 0.84, metalness: 0 });
+  const roofMat = new MeshStandardMaterial({ color: 0x8d4a55, roughness: 0.72, metalness: 0 });
+  const doorMat = new MeshStandardMaterial({ color: 0x3a241c, roughness: 1, metalness: 0 });
+  const house = new Group();
+  const walls = new Mesh(new BoxGeometry(1.35, 0.82, 1.1), wood);
+  walls.position.y = 0.41;
+  const roof = new Mesh(new ConeGeometry(1.02, 0.52, 4), roofMat);
+  roof.position.y = 1.02;
+  roof.rotation.y = Math.PI / 4;
+  const door = new Mesh(new BoxGeometry(0.4, 0.52, 0.04), doorMat);
+  door.position.set(0, 0.26, 0.56);
+  house.add(walls, roof, door);
+  house.position.set(0, GROUND, -1.25);
   island.add(house);
   const sleepBubble = labelSprite("z z z");
-  sleepBubble.position.set(0, 2.05, -1.45);
+  sleepBubble.position.set(0, 1.45, -1.25);
   sleepBubble.visible = false;
   island.add(sleepBubble);
 
@@ -216,7 +223,7 @@ export async function createScene(canvas) {
   dreamBubble.position.set(0.15, 1.65, 0.15);
   dreamBubble.visible = false;
   dog.add(body, head, tail, dreamBubble);
-  dog.position.y = DISK_TOP;
+  dog.position.y = GROUND;
   island.add(dog);
   scene.add(island);
 
@@ -231,7 +238,7 @@ export async function createScene(canvas) {
   let night = false;
   let puppy = false;
   let mode = "wander";
-  const target = new Vector3(0.4, DISK_TOP, 0.8);
+  const target = new Vector3(0.4, GROUND, 0.6);
   let sniff = 0;
   let time = 0;
 
@@ -239,7 +246,7 @@ export async function createScene(canvas) {
     const seed = hash(id);
     const angle = ((seed % 100) / 100) * 1.1 - 0.55;
     const radius = 0.75 + (seed % 6) * 0.1;
-    return { x: Math.sin(angle) * radius, z: 1.15 + Math.cos(angle) * radius * 0.35 };
+    return { x: Math.sin(angle) * radius, z: 1.05 + Math.cos(angle) * radius * 0.35 };
   }
 
   function addMound(id) {
@@ -252,7 +259,7 @@ export async function createScene(canvas) {
     const bone = new Mesh(new BoxGeometry(0.28, 0.08, 0.08), new MeshLambertMaterial({ color: 0xf4efe4 }));
     bone.position.y = 0.16;
     group.add(heap, bone);
-    group.position.set(spot.x, DISK_TOP + 0.04, spot.z);
+    group.position.set(spot.x, GROUND + 0.01, spot.z);
     moundRoot.add(group);
     mounds.set(id, { group, ...spot });
   }
@@ -262,7 +269,7 @@ export async function createScene(canvas) {
       new CylinderGeometry(0.16, 0.12, 0.06, 6),
       new MeshLambertMaterial({ color: 0x3a2418, flatShading: true }),
     );
-    hole.position.set(spot.x, DISK_TOP + 0.02, spot.z);
+    hole.position.set(spot.x, GROUND + 0.006, spot.z);
     moundRoot.add(hole);
     holes.push(spot);
   }
@@ -286,7 +293,7 @@ export async function createScene(canvas) {
     const total = Math.min(count, 5);
     for (let index = 0; index < total; index += 1) {
       const print = new Mesh(new BoxGeometry(0.1, 0.02, 0.16), new MeshLambertMaterial({ color: 0x3f5a32 }));
-      print.position.set(-0.7 + index * 0.22, DISK_TOP + 0.01, -0.55);
+      print.position.set(-0.7 + index * 0.22, GROUND + 0.008, -0.55);
       print.rotation.y = index % 2 === 0 ? 0.4 : -0.3;
       footprintRoot.add(print);
     }
@@ -303,39 +310,36 @@ export async function createScene(canvas) {
   function pickWander() {
     const angle = Math.random() * Math.PI * 1.2 - 0.4;
     const radius = 0.4 + Math.random() * 1.5;
-    target.set(Math.sin(angle) * radius, DISK_TOP, Math.cos(angle) * radius * 0.8 + 0.2);
+    target.set(Math.sin(angle) * radius, GROUND, Math.cos(angle) * radius * 0.8 + 0.15);
   }
 
   function applyMode() {
     const next = desiredMode();
     if (next === mode) return;
     mode = next;
-    if (mode === "bark") target.set(2.55, DISK_TOP, 1.15);
+    if (mode === "bark") target.set(2.55, GROUND, 0.85);
     else if (mode === "dig") {
       const hole = holes[holes.length - 1];
-      target.set(hole ? hole.x : 0, DISK_TOP, hole ? hole.z : 1.15);
-    } else if (mode === "sleep") target.set(0, DISK_TOP, -1.15);
-    else if (mode === "dream") target.set(0.2, DISK_TOP, 0.7);
+      target.set(hole ? hole.x : 0, GROUND, hole ? hole.z : 1.05);
+    } else if (mode === "sleep") target.set(0, GROUND, -0.85);
+    else if (mode === "dream") target.set(0.2, GROUND, 0.55);
     else pickWander();
   }
 
   function updateCamera() {
-    const radius = 12;
-    const polarClamped = MathUtils.clamp(polar, 0.55, 1.25);
-    polar = polarClamped;
+    polar = MathUtils.clamp(polar, POLAR_MIN, POLAR_MAX);
+    azimuth = MathUtils.clamp(azimuth, AZIMUTH_MIN, AZIMUTH_MAX);
+    distance = MathUtils.clamp(distance, DISTANCE_MIN, DISTANCE_MAX);
+    const focus = new Vector3(0, 0.32, 0);
     camera.position.set(
-      Math.sin(polar) * Math.sin(azimuth) * radius,
-      Math.cos(polar) * radius,
-      Math.sin(polar) * Math.cos(azimuth) * radius,
+      focus.x + Math.sin(polar) * Math.sin(azimuth) * distance,
+      focus.y + Math.cos(polar) * distance,
+      focus.z + Math.sin(polar) * Math.cos(azimuth) * distance,
     );
-    camera.lookAt(0, 0.35, 0);
+    camera.lookAt(focus);
     const width = canvas.clientWidth || 1;
     const height = canvas.clientHeight || 1;
-    const aspect = width / height;
-    camera.left = -frustum * aspect;
-    camera.right = frustum * aspect;
-    camera.top = frustum;
-    camera.bottom = -frustum;
+    camera.aspect = width / Math.max(height, 1);
     camera.updateProjectionMatrix();
     const narrow = width < 768;
     renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, narrow ? 1.5 : 2));
@@ -364,7 +368,7 @@ export async function createScene(canvas) {
     "wheel",
     (event) => {
       event.preventDefault();
-      frustum = MathUtils.clamp(frustum * (1 + event.deltaY * 0.001), 3.2, 7);
+      distance = MathUtils.clamp(distance * (1 + event.deltaY * 0.001), DISTANCE_MIN, DISTANCE_MAX);
       updateCamera();
     },
     { passive: false },
@@ -376,7 +380,8 @@ export async function createScene(canvas) {
     const dt = Math.min(0.05, (now - last) / 1000);
     last = now;
     time += dt;
-    island.position.y = Math.sin(time * 0.8) * 0.08;
+    island.position.y = Math.sin(time * 0.8) * 0.05;
+    clouds.update(time);
     applyMode();
     const dx = target.x - dog.position.x;
     const dz = target.z - dog.position.z;
